@@ -40,6 +40,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, userId, getToken, signOut } = useClerkAuth();
   const { user: clerkUser } = useUser();
   const [user, setUser] = useState<any>(null);
+  const [needsUsernameSetup, setNeedsUsernameSetup] = useState<boolean>(false);
 
   // Initialize API client with Clerk token getter
   useEffect(() => {
@@ -58,16 +59,27 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   }, [getToken]);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && clerkUser) {
-      setUser({
-        id: userId,
-        email: clerkUser.primaryEmailAddress?.emailAddress,
-        name: clerkUser.fullName || clerkUser.firstName || 'User',
-        imageUrl: clerkUser.imageUrl,
-      });
-    } else {
-      setUser(null);
-    }
+    const sync = async () => {
+      if (isLoaded && isSignedIn && clerkUser) {
+        setUser({
+          id: userId,
+          email: clerkUser.primaryEmailAddress?.emailAddress,
+          name: clerkUser.fullName || clerkUser.firstName || 'User',
+          imageUrl: clerkUser.imageUrl,
+        });
+        try {
+          const status = await apiClient.getAuthStatus();
+          setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
+        } catch (e) {
+          // If status endpoint fails with 428/401, assume onboarding needed when signed in
+          setNeedsUsernameSetup(true);
+        }
+      } else {
+        setUser(null);
+        setNeedsUsernameSetup(false);
+      }
+    };
+    void sync();
   }, [isLoaded, isSignedIn, userId, clerkUser]);
 
   const value: AuthContextType = {
@@ -76,7 +88,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     isLoading: !isLoaded,
     loading: !isLoaded, // For backwards compatibility
     isAuthenticated: isSignedIn || false,
-    needsUsernameSetup: false, // Clerk handles this
+    needsUsernameSetup,
     signOut: async () => {
       await signOut();
     },
@@ -101,6 +113,10 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
           name: clerkUser.fullName || clerkUser.firstName || 'User',
           imageUrl: clerkUser.imageUrl,
         });
+        try {
+          const status = await apiClient.getAuthStatus();
+          setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
+        } catch {}
       }
     },
     login: async () => {

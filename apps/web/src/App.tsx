@@ -32,6 +32,7 @@ import UserProfile from './pages/UserProfile'
 import FollowRequests from './pages/FollowRequests'
 import AcceptProjectInvite from './pages/AcceptProjectInvite'
 import SSOCallback from './pages/SSOCallback'
+import Onboarding from './pages/Onboarding'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,7 @@ function AppRoutes() {
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/sso-callback" element={<SSOCallback />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/invite/project/:token" element={<AcceptProjectInvite />} />
         </Route>
         

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
 import { useSignIn, useSignUp } from '@clerk/clerk-react';
+import { apiClient } from '../lib/api-client';
 
 export default function LoginWithClerk() {
   const { user } = useAuth();
@@ -46,7 +47,12 @@ export default function LoginWithClerk() {
 
         if (result.status === 'complete') {
           await setSignUpActive({ session: result.createdSessionId });
-          navigate('/dashboard');
+          try {
+            const status = await apiClient.getAuthStatus();
+            navigate(status?.needsOnboarding ? '/onboarding' : '/dashboard');
+          } catch {
+            navigate('/dashboard');
+          }
         }
       } else {
         if (!signInLoaded || !signIn) return;
@@ -58,7 +64,12 @@ export default function LoginWithClerk() {
 
         if (result.status === 'complete') {
           await setSignInActive({ session: result.createdSessionId });
-          navigate('/dashboard');
+          try {
+            const status = await apiClient.getAuthStatus();
+            navigate(status?.needsOnboarding ? '/onboarding' : '/dashboard');
+          } catch {
+            navigate('/dashboard');
+          }
         }
       }
     } catch (err: any) {

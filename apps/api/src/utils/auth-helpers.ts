@@ -12,7 +12,7 @@ export async function getUserFromClerkAuth(req: AuthRequest) {
   }
 
   // Try to find existing user
-  let user = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { clerkUserId: clerkUserId },
     select: {
       id: true,
@@ -31,29 +31,8 @@ export async function getUserFromClerkAuth(req: AuthRequest) {
     };
   }
 
-  // If user doesn't exist, create a temporary one
-  // The user will need to complete profile setup
-  const tempUsername = `user_${clerkUserId.substring(0, 8)}`;
-  const newUser = await prisma.user.create({
-    data: {
-      clerkUserId: clerkUserId,
-      email: `${clerkUserId}@clerk.user`,
-      username: tempUsername,
-      displayName: 'New User',
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      displayName: true,
-      clerkUserId: true,
-    }
-  });
-
-  return {
-    ...newUser,
-    displayName: newUser.displayName || undefined
-  };
+  // Do NOT auto-create a user here. Return null to signal onboarding is required.
+  return null;
 }
 
 /**

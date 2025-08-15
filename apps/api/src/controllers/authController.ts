@@ -3,6 +3,25 @@ import { prisma } from '../utils/database';
 import { AuthRequest } from '../middleware/clerk-auth';
 
 export class AuthController {
+  // Return auth status and whether onboarding is required
+  static async status(req: AuthRequest, res: Response): Promise<Response | void> {
+    try {
+      const clerkUserId = req.auth!.userId;
+      const user = await prisma.user.findUnique({
+        where: { clerkUserId },
+        select: { id: true, username: true }
+      });
+
+      if (!user) {
+        return res.json({ isAuthenticated: true, hasProfile: false, needsOnboarding: true });
+      }
+
+      const needsOnboarding = !user.username;
+      return res.json({ isAuthenticated: true, hasProfile: true, needsOnboarding });
+    } catch (error) {
+      throw error;
+    }
+  }
   // Search users by username or display name
   static async searchUsers(req: AuthRequest, res: Response): Promise<Response | void> {
     try {

@@ -84,6 +84,11 @@ export class ApiClient {
   }
 
   // User endpoints
+  async getAuthStatus() {
+    const response = await this.client.get('/auth/status');
+    return response.data;
+  }
+
   async createUserProfile(data: { username: string; displayName?: string }) {
     const response = await this.client.post('/auth/profile', data);
     return response.data;

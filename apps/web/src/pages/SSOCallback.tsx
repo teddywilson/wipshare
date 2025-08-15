@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClerk } from '@clerk/clerk-react';
+import { apiClient } from '../lib/api-client';
 
 export default function SSOCallback() {
   const { handleRedirectCallback } = useClerk();
@@ -12,13 +13,18 @@ export default function SSOCallback() {
         // Handle the OAuth callback using Clerk's built-in method
         await handleRedirectCallback({});
         
-        // Check for invitation redirect
+        // After OAuth, check onboarding status
+        try {
+          const status = await apiClient.getAuthStatus();
+          if (status?.needsOnboarding) {
+            navigate('/onboarding');
+            return;
+          }
+        } catch {}
+
         const invitationRedirect = sessionStorage.getItem('invitationRedirect');
-        if (invitationRedirect) {
-          navigate(invitationRedirect);
-        } else {
-          navigate('/dashboard');
-        }
+        if (invitationRedirect) navigate(invitationRedirect);
+        else navigate('/dashboard');
       } catch (err) {
         console.error('OAuth callback error:', err);
         // If there's an error, redirect to login
