@@ -12,15 +12,15 @@ datasource db {
 
 model User {
   id          String   @id @default(cuid())
-  firebaseUid String   @unique @map("firebase_uid")
+  clerkUserId String   @unique @map("clerk_user_id")
   email       String   @unique
-  password    String   @default("") // Not used with Firebase Auth
+  password    String   @default("") // Not used with Clerk Auth
   username    String   @unique
   displayName String?  @map("display_name")
   bio         String?
   avatarUrl   String?  @map("avatar_url")
   location    String?
-  verified    Boolean  @default(true) // Firebase handles email verification
+  verified    Boolean  @default(true) // Clerk handles email verification
   tier        String   @default("free") // free, pro, enterprise
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")

@@ -1,12 +1,21 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/database';
+import { AuthRequest } from '../middleware/clerk-auth';
 
 export class AuthController {
   // Search users by username or display name
-  static async searchUsers(req: Request, res: Response): Promise<Response | void> {
+  static async searchUsers(req: AuthRequest, res: Response): Promise<Response | void> {
     try {
       const { q: query, limit = 10 } = req.query;
-      const currentUserId = req.user?.id;
+      const clerkUserId = req.auth?.userId;
+      
+      // Get current user from database using Clerk ID
+      const currentUser = clerkUserId ? await prisma.user.findUnique({
+        where: { clerkUserId: clerkUserId },
+        select: { id: true }
+      }) : null;
+      
+      const currentUserId = currentUser?.id;
 
       if (!query || typeof query !== 'string' || query.trim().length < 2) {
         return res.json({ users: [] });
@@ -60,12 +69,11 @@ export class AuthController {
       throw error;
     }
   }
-  // Create or update user profile (after Firebase registration)
-  static async createProfile(req: Request, res: Response): Promise<Response | void> {
+  // Create or update user profile (after Clerk registration)
+  static async createProfile(req: AuthRequest, res: Response): Promise<Response | void> {
     try {
-      const { username, displayName } = req.body;
-      const firebaseUid = req.user!.firebaseUid;
-      const email = req.user!.email;
+      const { username, displayName, email } = req.body;
+      const clerkUserId = req.auth!.userId;
 
       // Validate required fields
       if (!username) {
@@ -89,35 +97,62 @@ export class AuthController {
         select: { id: true }
       });
 
-      if (existingUser && existingUser.id !== req.user!.id) {
+      // Check if user already exists with this Clerk ID
+      const existingUserByClerk = await prisma.user.findUnique({
+        where: { clerkUserId: clerkUserId },
+        select: { id: true }
+      });
+
+      if (existingUser && (!existingUserByClerk || existingUser.id !== existingUserByClerk.id)) {
         return res.status(400).json({
           error: 'Username already taken',
           message: 'Please choose a different username'
         });
       }
 
-      // Update the user with username and displayName
-      const updatedUser = await prisma.user.update({
-        where: { firebaseUid },
-        data: {
-          username,
-          displayName: displayName || email.split('@')[0]
-        },
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          displayName: true,
-          bio: true,
-          avatarUrl: true,
-          verified: true,
-          createdAt: true,
-          firebaseUid: true,
-        }
-      });
+      // Create or update the user
+      const userData = {
+        username,
+        displayName: displayName || (email ? email.split('@')[0] : username),
+        email: email || `${clerkUserId}@clerk.user`, // Fallback email if not provided
+      };
+
+      const user = existingUserByClerk 
+        ? await prisma.user.update({
+            where: { clerkUserId: clerkUserId },
+            data: userData,
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              displayName: true,
+              bio: true,
+              avatarUrl: true,
+              verified: true,
+              createdAt: true,
+              clerkUserId: true,
+            }
+          })
+        : await prisma.user.create({
+            data: {
+              ...userData,
+              clerkUserId: clerkUserId,
+            },
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              displayName: true,
+              bio: true,
+              avatarUrl: true,
+              verified: true,
+              createdAt: true,
+              clerkUserId: true,
+            }
+          });
 
       res.json({
-        user: updatedUser,
+        user: user,
         message: 'Profile created successfully'
       });
     } catch (error: any) {
@@ -131,13 +166,13 @@ export class AuthController {
     }
   }
 
-  // Get current user info - user is already verified by Firebase middleware
-  static async me(req: Request, res: Response): Promise<Response | void> {
+  // Get current user info - user is already verified by Clerk middleware
+  static async me(req: AuthRequest, res: Response): Promise<Response | void> {
     try {
-      const userId = req.user!.id;
+      const clerkUserId = req.auth!.userId;
 
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { clerkUserId: clerkUserId },
         select: {
           id: true,
           email: true,
@@ -147,7 +182,7 @@ export class AuthController {
           avatarUrl: true,
           verified: true,
           createdAt: true,
-          firebaseUid: true,
+          clerkUserId: true,
           _count: {
             select: {
               tracks: true,

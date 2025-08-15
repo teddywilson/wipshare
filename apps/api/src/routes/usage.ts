@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateFirebase as authenticate } from '../middleware/firebase-auth';
+import { requireAuth as authenticate } from '../middleware/clerk-auth';
 import { UsageController } from '../controllers/usageController';
 
 const router = Router();

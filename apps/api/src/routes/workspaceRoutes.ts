@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { WorkspaceController } from '../controllers/workspaceController'
-import { authenticateFirebase } from '../middleware/firebase-auth'
+import { requireAuth } from '../middleware/clerk-auth'
 
 const router = Router()
 
 // All workspace routes require authentication
-router.use(authenticateFirebase)
+router.use(requireAuth)
 
 // Workspace management
 router.get('/workspaces', WorkspaceController.getUserWorkspaces)

@@ -1,15 +1,11 @@
-import { Link } from "react-router-dom";
-import { useAuth } from "../lib/auth-context";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Landing() {
-  const { loginWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      // Error is handled in the auth context
-    }
+  const handleGoogleSignIn = () => {
+    // Navigate to login page where Clerk handles Google sign-in
+    navigate('/login');
   };
 
   return (

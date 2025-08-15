@@ -39,15 +39,9 @@
       "Bash(gsutil mb:*)",
       "Bash(gsutil iam:*)",
       "Bash(export PROJECT_NUMBER=\"234825041743\")",
-      "Bash(firebase init:*)",
-      "Bash(firebase hosting:sites:create:*)",
-      "Bash(firebase login:ci:*)",
       "Bash(./cloud-sql-proxy:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(npx prisma:*)",
-      "Bash(firebase apps:create:*)",
-      "Bash(firebase apps:list:*)",
-      "Bash(firebase projects:addfirebase:*)"
+      "Bash(npx prisma:*)"
     ],
     "deny": []
   }

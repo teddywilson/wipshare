@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ClerkProvider, useAuth as useClerkAuth, useUser, SignIn, SignUp } from '@clerk/clerk-react';
+import { apiClient } from './api-client';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -40,6 +41,22 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   const { user: clerkUser } = useUser();
   const [user, setUser] = useState<any>(null);
 
+  // Initialize API client with Clerk token getter
+  useEffect(() => {
+    const getAuthToken = async () => {
+      try {
+        // Don't specify a template - use the default session token
+        const token = await getToken();
+        return token;
+      } catch (error) {
+        console.error('Error getting auth token:', error);
+        return null;
+      }
+    };
+
+    apiClient.setTokenGetter(getAuthToken);
+  }, [getToken]);
+
   useEffect(() => {
     if (isLoaded && isSignedIn && clerkUser) {
       setUser({
@@ -52,16 +69,6 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
       setUser(null);
     }
   }, [isLoaded, isSignedIn, userId, clerkUser]);
-
-  const getAuthToken = async () => {
-    try {
-      const token = await getToken({ template: 'backend' });
-      return token;
-    } catch (error) {
-      console.error('Error getting auth token:', error);
-      return null;
-    }
-  };
 
   const value: AuthContextType = {
     user,
@@ -76,7 +83,15 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     logout: async () => {
       await signOut();
     },
-    getToken: getAuthToken,
+    getToken: async () => {
+      try {
+        const token = await getToken();
+        return token;
+      } catch (error) {
+        console.error('Error getting auth token:', error);
+        return null;
+      }
+    },
     refreshProfile: async () => {
       // Refresh user data if needed
       if (clerkUser) {

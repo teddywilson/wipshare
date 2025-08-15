@@ -19,6 +19,7 @@ import playlistsRouter from './routes/playlists';
 import { uploadRouter } from './routes/upload';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFound';
+import { attachClerk } from './middleware/clerk-auth';
 
 // Load environment variables
 try {
@@ -52,6 +53,9 @@ app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production'
 }));
 app.use(compression());
+
+// Clerk auth context (must come before routes using auth)
+app.use(attachClerk);
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS

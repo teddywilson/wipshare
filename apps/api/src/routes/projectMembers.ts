@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateFirebase as authenticate } from '../middleware/firebase-auth';
+import { requireAuth as authenticate } from '../middleware/clerk-auth';
 import { loadWorkspace } from '../middleware/workspace';
 import {
   getProjectMembers,

@@ -103,7 +103,7 @@ export class TracksController {
           user: {
             select: {
               id: true,
-              firebaseUid: true,
+              clerkUserId: true,
               username: true,
               displayName: true,
               avatarUrl: true,
@@ -185,7 +185,7 @@ export class TracksController {
           user: {
             select: {
               id: true,
-              firebaseUid: true,
+              clerkUserId: true,
               username: true,
               displayName: true,
               avatarUrl: true,
@@ -234,7 +234,7 @@ export class TracksController {
           user: {
             select: {
               id: true,
-              firebaseUid: true,
+              clerkUserId: true,
               username: true,
               displayName: true,
               avatarUrl: true,
@@ -415,7 +415,7 @@ export class TracksController {
           user: {
             select: {
               id: true,
-              firebaseUid: true,
+              clerkUserId: true,
               username: true,
               displayName: true,
               avatarUrl: true,
@@ -798,7 +798,7 @@ export class TracksController {
           user: {
             select: {
               id: true,
-              firebaseUid: true,
+              clerkUserId: true,
               username: true,
               displayName: true,
               avatarUrl: true,

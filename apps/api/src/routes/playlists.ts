@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { authenticateFirebase } from '../middleware/firebase-auth'
+import { requireAuth } from '../middleware/clerk-auth'
 import { imageUpload } from '../lib/storage'
 import {
   getMyPlaylists,
@@ -19,39 +19,39 @@ import {
 const router = Router()
 
 // Get user's own playlists
-router.get('/my', authenticateFirebase, getMyPlaylists)
+router.get('/my', requireAuth, getMyPlaylists)
 
 // Get playlists from others (following/discoverable)
-router.get('/discover', authenticateFirebase, getDiscoverablePlaylists)
+router.get('/discover', requireAuth, getDiscoverablePlaylists)
 
 // Get single playlist (public access with token support) - optional auth
-router.get('/:playlistId', authenticateFirebase, getPlaylist)
+router.get('/:playlistId', requireAuth, getPlaylist)
 
 // Create playlist
-router.post('/', authenticateFirebase, createPlaylist)
+router.post('/', requireAuth, createPlaylist)
 
 // Update playlist
-router.put('/:playlistId', authenticateFirebase, updatePlaylist)
+router.put('/:playlistId', requireAuth, updatePlaylist)
 
 // Delete playlist
-router.delete('/:playlistId', authenticateFirebase, deletePlaylist)
+router.delete('/:playlistId', requireAuth, deletePlaylist)
 
 // Generate/reset secret link
-router.post('/:playlistId/secret-link', authenticateFirebase, resetSecretLink)
+router.post('/:playlistId/secret-link', requireAuth, resetSecretLink)
 
 // Follow/unfollow playlist
-router.post('/:playlistId/follow', authenticateFirebase, toggleFollowPlaylist)
+router.post('/:playlistId/follow', requireAuth, toggleFollowPlaylist)
 
 // Add track to playlist
-router.post('/:playlistId/tracks', authenticateFirebase, addTrackToPlaylist)
+router.post('/:playlistId/tracks', requireAuth, addTrackToPlaylist)
 
 // Remove track from playlist
-router.delete('/:playlistId/tracks/:trackId', authenticateFirebase, removeTrackFromPlaylist)
+router.delete('/:playlistId/tracks/:trackId', requireAuth, removeTrackFromPlaylist)
 
 // Reorder tracks in playlist
-router.put('/:playlistId/tracks/reorder', authenticateFirebase, reorderPlaylistTracks)
+router.put('/:playlistId/tracks/reorder', requireAuth, reorderPlaylistTracks)
 
 // Upload playlist image
-router.post('/:playlistId/image', authenticateFirebase, imageUpload.single('image'), uploadPlaylistImage)
+router.post('/:playlistId/image', requireAuth, imageUpload.single('image'), uploadPlaylistImage)
 
 export default router

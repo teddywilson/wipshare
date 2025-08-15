@@ -2,66 +2,69 @@ name: Deploy Staging
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
-env:
-  NODE_VERSION: '20'
+# Prevent overlapping staging deploys
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
 
 jobs:
-  migrate-database:
-    name: Run Database Migrations (Staging)
+  migrate-db:
+    name: Run Prisma migrations (staging)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Install dependencies
-        run: |
-          cd apps/api
-          npm ci
-          
-      - name: Run Prisma migrations
+          node-version: 20
+
+      # Install only in the API workspace to avoid Husky/monorepo noise
+      - name: Install (api)
+        working-directory: ./apps/api
         env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: |
-          cd apps/api
-          npx prisma migrate deploy
+          HUSKY: "0" # skip git hooks during CI installs
+        run: npm ci
+
+      - name: Prisma generate (api)
+        working-directory: ./apps/api
+        run: npx prisma generate
+
+      - name: Prisma migrate deploy (staging DB)
+        working-directory: ./apps/api
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STG }}
+        run: npx prisma migrate deploy
 
   deploy-api:
-    name: Deploy API to Render (Staging)
-    needs: migrate-database
+    name: Deploy API to Render (staging)
+    needs: migrate-db
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Deploy
-        run: |
-          curl -X POST ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+      - name: Trigger Render deploy
+        uses: render-examples/deploy-render@v1
+        with:
+          apiKey:   ${{ secrets.RENDER_API_KEY }}
+          serviceId: ${{ secrets.RENDER_API_STG_SERVICE_ID }}
 
   deploy-web:
-    name: Deploy Web to Vercel (Staging)
+    name: Deploy Frontend to Vercel (staging project)
+    needs: deploy-api
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout (for commit SHA env only)
+        uses: actions/checkout@v4
+
+      - name: Vercel deploy
+        uses: amondnet/vercel-action@v25
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Install Vercel CLI
-        run: npm install -g vercel
-        
-      - name: Deploy to Vercel
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_STAGING_PROJECT_ID }}
-        run: |
-          cd apps/web
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel build --prod --token=$VERCEL_TOKEN
-          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+          vercel-token:   ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id:  ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STG }}
+          # This publishes to the staging project's Production env
+          vercel-args: '--prod'
+          working-directory: ./apps/frontend

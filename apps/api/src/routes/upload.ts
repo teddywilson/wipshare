@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateFirebase } from '../middleware/firebase-auth';
+import { requireAuth } from '../middleware/clerk-auth';
 import { Storage } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,14 +7,14 @@ const router = Router();
 
 // Initialize Google Cloud Storage
 const storage = new Storage({
-  projectId: process.env.GCP_PROJECT_ID || process.env.FIREBASE_PROJECT_ID,
+  projectId: process.env.GCP_PROJECT_ID,
 });
 
 const bucketName = process.env.GCS_BUCKET_NAME || 'wipshare-tracks-stg';
 const bucket = storage.bucket(bucketName);
 
 // Generate signed URL for direct upload to GCS
-router.post('/generate-upload-url', authenticateFirebase, async (req, res): Promise<any> => {
+router.post('/generate-upload-url', requireAuth, async (req, res): Promise<any> => {
   try {
     const { filename, contentType, fileSize } = req.body;
     

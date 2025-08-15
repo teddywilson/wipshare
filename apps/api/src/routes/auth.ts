@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/authController';
-import { authenticateFirebase } from '../middleware/firebase-auth';
+import { requireAuth } from '../middleware/clerk-auth';
 
 export const authRouter = Router();
 
 // Search users (protected)
-authRouter.get('/search', authenticateFirebase, AuthController.searchUsers);
+authRouter.get('/search', requireAuth, AuthController.searchUsers);
 
 // Create or update user profile (protected)
-authRouter.post('/profile', authenticateFirebase, AuthController.createProfile);
+authRouter.post('/profile', requireAuth, AuthController.createProfile);
 
 // Get current user info (protected)
-// Note: Registration and login are handled by Firebase Auth client-side
-authRouter.get('/me', authenticateFirebase, AuthController.me);
+// Note: Registration and login are handled by Clerk client-side
+authRouter.get('/me', requireAuth, AuthController.me);

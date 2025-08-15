@@ -17,7 +17,7 @@ import UsernameSetup from './components/UsernameSetup'
 
 // Pages
 import Landing from './pages/Landing'
-import Login from './pages/Login'
+import Login from './pages/LoginWithClerk'
 import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import Track from './pages/Track'
@@ -31,6 +31,7 @@ import Playlist from './pages/Playlist'
 import UserProfile from './pages/UserProfile'
 import FollowRequests from './pages/FollowRequests'
 import AcceptProjectInvite from './pages/AcceptProjectInvite'
+import SSOCallback from './pages/SSOCallback'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/sso-callback" element={<SSOCallback />} />
           <Route path="/invite/project/:token" element={<AcceptProjectInvite />} />
         </Route>
         
