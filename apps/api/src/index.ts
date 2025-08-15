@@ -20,7 +20,7 @@ import { uploadRouter } from './routes/upload';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFound';
 
-// Load environment variables (prefer .env.local for local dev)
+// Load environment variables
 try {
   const envLocalPath = path.resolve(__dirname, '..', '.env.local');
   if (fs.existsSync(envLocalPath)) {
@@ -34,47 +34,36 @@ try {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
-// Log deployment version for debugging
-console.log('Backend started - Deployment:', process.env.DEPLOYMENT_VERSION || 'v2-fixed', 'at', new Date().toISOString());
+// Log startup info
+console.log(`🔧 Starting WipShare API - ${process.env.NODE_ENV || 'development'} mode`);
 console.log('Environment check:', {
   NODE_ENV: process.env.NODE_ENV,
-  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+  CLERK_JWT_AUD: process.env.CLERK_JWT_AUD,
   DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
-  CORS_ORIGIN: process.env.CORS_ORIGIN
+  R2_BUCKET: process.env.R2_BUCKET,
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
 });
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: process.env.NODE_ENV === 'production'
+}));
 app.use(compression());
 
 // CORS configuration
-const corsOriginEnv = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5175';
-// Parse comma-separated origins from environment variable
-const corsOrigins = corsOriginEnv.split(',').map(origin => origin.trim()).filter(Boolean);
-const allowedOrigins = [
-  ...corsOrigins,
-  // Also allow firebaseapp.com domain variants
-  ...corsOrigins.map(origin => origin.replace('.web.app', '.firebaseapp.com')),
-  // Allow staging custom domain
-  'https://staging.wipshare.com',
-  // Allow Firebase hosting domains
-  'https://wipshare-frontend-stg.web.app',
-  'https://wipshare-frontend-stg.firebaseapp.com',
-  'http://localhost:5175',
-  // Temporary: Allow local network access
-  'http://192.168.1.189:5175',
-  'http://localhost:5174',
-  'http://localhost:5173'
-].filter(Boolean);
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:5173'];
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed))) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked origin: ${origin}`);
@@ -85,15 +74,22 @@ app.use(cors({
 }));
 
 // Logging
-app.use(morgan('combined'));
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+}
 
-// Body parsing - increased limits for file uploads
+// Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint (no auth required)
+app.get('/healthz', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: process.env.DEPLOYMENT_VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 // API routes
@@ -113,10 +109,22 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 WipShare API running on port ${PORT}`);
-  console.log(`📱 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`📱 Frontend URL: ${allowedOrigins[0]}`);
   console.log(`🗄️  Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  console.log(`🔐 Auth: Clerk ${process.env.CLERK_SECRET_KEY ? 'configured' : 'not configured'}`);
+  console.log(`📦 Storage: R2 ${process.env.R2_BUCKET || 'not configured'}`);
+  console.log(`📧 Email: Resend ${process.env.RESEND_API_KEY ? 'configured' : 'not configured'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 export default app;

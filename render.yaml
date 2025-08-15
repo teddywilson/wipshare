@@ -1,0 +1,72 @@
+services:
+  # Staging API
+  - type: web
+    name: wipshare-api-stg
+    runtime: node
+    repo: https://github.com/YOUR_GITHUB_USERNAME/wipshare
+    branch: main
+    buildCommand: cd apps/api && npm install && npm run build
+    startCommand: cd apps/api && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_AUD
+        value: https://api.staging.wipshare.com
+      - key: ALLOWED_ORIGINS
+        value: https://staging.wipshare.com
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: wipshare-stg-uploads
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # Production API
+  - type: web
+    name: wipshare-api-prod
+    runtime: node
+    repo: https://github.com/YOUR_GITHUB_USERNAME/wipshare
+    branch: main
+    buildCommand: cd apps/api && npm install && npm run build
+    startCommand: cd apps/api && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWT_AUD
+        value: https://api.wipshare.com
+      - key: ALLOWED_ORIGINS
+        value: https://www.wipshare.com
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: wipshare-prod-uploads
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LOG_LEVEL
+        value: warn

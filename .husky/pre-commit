@@ -3,19 +3,19 @@
 # TypeScript type checking
 echo "🔍 Running TypeScript type checks..."
 
-# Check backend
-echo "  Checking backend..."
-npm run type-check:backend
+# Check API
+echo "  Checking API..."
+npm run type-check:api
 if [ $? -ne 0 ]; then
-  echo "❌ Backend TypeScript errors found. Please fix them before committing."
+  echo "❌ API TypeScript errors found. Please fix them before committing."
   exit 1
 fi
 
-# Check frontend
-echo "  Checking frontend..."
-npm run type-check:frontend
+# Check Web
+echo "  Checking Web..."
+npm run type-check:web
 if [ $? -ne 0 ]; then
-  echo "❌ Frontend TypeScript errors found. Please fix them before committing."
+  echo "❌ Web TypeScript errors found. Please fix them before committing."
   exit 1
 fi
 
