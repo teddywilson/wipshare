@@ -4,6 +4,9 @@
   "installCommand": "npm install",
   "framework": "vite",
   "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
