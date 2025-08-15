@@ -1,0 +1,22 @@
+#\!/bin/sh
+
+# TypeScript type checking
+echo "🔍 Running TypeScript type checks..."
+
+# Check backend
+echo "  Checking backend..."
+npm run type-check:backend
+if [ $? -ne 0 ]; then
+  echo "❌ Backend TypeScript errors found. Please fix them before committing."
+  exit 1
+fi
+
+# Check frontend
+echo "  Checking frontend..."
+npm run type-check:frontend
+if [ $? -ne 0 ]; then
+  echo "❌ Frontend TypeScript errors found. Please fix them before committing."
+  exit 1
+fi
+
+echo "✅ All TypeScript checks passed\!"

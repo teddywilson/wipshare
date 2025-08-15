@@ -1,0 +1,592 @@
+// Prisma schema file for WipShare
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique @map("firebase_uid")
+  email       String   @unique
+  password    String   @default("") // Not used with Firebase Auth
+  username    String   @unique
+  displayName String?  @map("display_name")
+  bio         String?
+  avatarUrl   String?  @map("avatar_url")
+  location    String?
+  verified    Boolean  @default(true) // Firebase handles email verification
+  tier        String   @default("free") // free, pro, enterprise
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tracks             Track[]
+  comments           Comment[]
+  likes              Like[]
+  playlists          Playlist[]
+  followedPlaylists  PlaylistFollower[]
+  collaboratingPlaylists PlaylistCollaborator[]
+  followers          Follow[] @relation("UserFollowers")
+  following          Follow[] @relation("UserFollowing")
+  notifications      Notification[]
+  projects           Project[]
+  projectMembers     ProjectMember[]
+  sentProjectInvitations ProjectInvitation[] @relation("ProjectInviter")
+  usage              Usage?
+  usageLogs          UsageLog[]
+  workspaceMembers   WorkspaceMember[]
+  ownedWorkspaces    Workspace[] @relation("WorkspaceOwner")
+  personalWorkspace  Workspace? @relation("PersonalWorkspace")
+  invitations        WorkspaceInvitation[]
+  defaultWorkspaceId String? @map("default_workspace_id")
+
+  @@map("users")
+}
+
+model Track {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  workspaceId  String   @map("workspace_id")
+  title        String
+  description  String?
+  fileUrl      String   @map("file_url")
+  filename     String?  @map("filename") // Original filename from upload
+  imageUrl     String?  @map("image_url")
+  tags         String[] @default([])
+  waveformData Json?    @map("waveform_data")
+  duration     Int?     // in seconds
+  playCount    Int      @default(0) @map("play_count")
+  visibility   String   @default("private") // private, project, channel
+  version      String   @default("001")
+  channelIds   String[] @default([]) @map("channel_ids")
+  projectIds   String[] @default([]) @map("project_ids")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  comments        Comment[]
+  likes           Like[]
+  versions        TrackVersion[]
+  playlistItems   PlaylistTrack[]
+  projectTracks   ProjectTrack[]
+
+  @@index([workspaceId])
+  @@map("tracks")
+}
+
+model TrackVersion {
+  id            String   @id @default(cuid())
+  trackId       String   @map("track_id")
+  versionNumber Int      @map("version_number")
+  title         String
+  description   String?
+  fileUrl       String   @map("file_url")
+  filename      String?  @map("filename") // Original filename from upload
+  waveformData  Json?    @map("waveform_data")
+  duration      Int?     // in seconds
+  isPinned      Boolean  @default(false) @map("is_pinned") // Indicates if this is the default version
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, versionNumber])
+  @@map("track_versions")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  trackId   String   @map("track_id")
+  userId    String   @map("user_id")
+  content   String
+  timestamp Float?   // timestamp in track (seconds)
+  version   String?  // track version this comment refers to
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  track    Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Playlist {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  workspaceId         String?  @map("workspace_id")
+  title               String
+  description         String?
+  coverUrl            String?  @map("cover_url")
+  visibility          PlaylistVisibility @default(PRIVATE)
+  secretToken         String?  @unique @map("secret_token")
+  secretTokenCreatedAt DateTime? @map("secret_token_created_at")
+  followersCount      Int      @default(0) @map("followers_count")
+  playsCount          Int      @default(0) @map("plays_count")
+  isCollaborative     Boolean  @default(false) @map("is_collaborative")
+  tags                String[] @default([])
+  collectionType      String   @default("playlist") @map("collection_type") // playlist, album, ep
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tracks         PlaylistTrack[]
+  followers      PlaylistFollower[]
+  collaborators  PlaylistCollaborator[]
+  accessLogs     PlaylistAccessLog[]
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([visibility])
+  @@index([secretToken])
+  @@map("playlists")
+}
+
+enum PlaylistVisibility {
+  PRIVATE        // Only owner can see
+  FOLLOWERS_ONLY // Only followers can see
+  WORKSPACE      // Workspace members can see
+  PUBLIC         // Anyone can see
+  SECRET_LINK    // Anyone with secret link can see
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String   @map("playlist_id")
+  trackId    String   @map("track_id")
+  position   Int
+  addedBy    String?  @map("added_by") // User who added the track
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, trackId])
+  @@map("playlist_tracks")
+}
+
+model PlaylistFollower {
+  id         String   @id @default(cuid())
+  playlistId String   @map("playlist_id")
+  userId     String   @map("user_id")
+  followedAt DateTime @default(now()) @map("followed_at")
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, userId])
+  @@map("playlist_followers")
+}
+
+model PlaylistCollaborator {
+  id              String   @id @default(cuid())
+  playlistId      String   @map("playlist_id")
+  userId          String   @map("user_id")
+  canAddTracks    Boolean  @default(true) @map("can_add_tracks")
+  canRemoveTracks Boolean  @default(false) @map("can_remove_tracks")
+  canEditDetails  Boolean  @default(false) @map("can_edit_details")
+  addedBy         String   @map("added_by")
+  addedAt         DateTime @default(now()) @map("added_at")
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, userId])
+  @@map("playlist_collaborators")
+}
+
+model PlaylistAccessLog {
+  id          String   @id @default(cuid())
+  playlistId  String   @map("playlist_id")
+  userId      String?  @map("user_id")
+  accessToken String?  @map("access_token")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  accessedAt  DateTime @default(now()) @map("accessed_at")
+
+  // Relations
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@index([playlistId])
+  @@map("playlist_access_logs")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  trackId   String   @map("track_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@map("likes")
+}
+
+model Follow {
+  id          String      @id @default(cuid())
+  followerId  String      @map("follower_id")
+  followingId String      @map("following_id")
+  status      FollowStatus @default(PENDING)
+  requestedAt DateTime    @default(now()) @map("requested_at")
+  respondedAt DateTime?   @map("responded_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  follower  User @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+enum FollowStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?            // Additional structured data
+  read        Boolean          @default(false)
+  actionUrl   String?          @map("action_url")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  readAt      DateTime?        @map("read_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  FOLLOW_REQUEST
+  FOLLOW_APPROVED
+  FOLLOW_REJECTED
+  COMMENT
+  LIKE
+  MENTION
+  PROJECT_INVITE
+}
+
+model Usage {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  
+  // Current month usage
+  currentTracks     Int      @default(0) @map("current_tracks")
+  currentStorage    BigInt   @default(0) @map("current_storage") // in bytes
+  currentBandwidth  BigInt   @default(0) @map("current_bandwidth") // in bytes
+  currentPlays      Int      @default(0) @map("current_plays")
+  
+  // Total usage (all time)
+  totalTracks       Int      @default(0) @map("total_tracks")
+  totalStorage      BigInt   @default(0) @map("total_storage")
+  totalBandwidth    BigInt   @default(0) @map("total_bandwidth")
+  totalPlays        Int      @default(0) @map("total_plays")
+  
+  // Period tracking
+  periodStart       DateTime @default(now()) @map("period_start")
+  periodEnd         DateTime @map("period_end")
+  
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("usage")
+}
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  action    String   // upload, play, download, delete
+  resource  String?  // track_id, etc
+  amount    BigInt?  // bytes for storage/bandwidth, count for others
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, createdAt])
+  @@map("usage_logs")
+}
+
+model TierLimit {
+  id               String  @id @default(cuid())
+  tier             String  @unique // free, pro, enterprise
+  maxTracks        Int     @map("max_tracks")
+  maxStorageGB     Int     @map("max_storage_gb")
+  maxBandwidthGB   Int     @map("max_bandwidth_gb")
+  maxTrackSizeMB   Int     @map("max_track_size_mb")
+  maxTrackDuration Int     @map("max_track_duration") // in seconds
+  features         Json?   // Additional feature flags
+  
+  @@map("tier_limits")
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  workspaceId String    @map("workspace_id")
+  title       String
+  description String?
+  imageUrl    String?   @map("image_url")
+  type        String    @default("collection") // collection, ep, album, single
+  isPublic    Boolean   @default(false) @map("is_public")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectTracks ProjectTrack[]
+  members      ProjectMember[]
+  invitations  ProjectInvitation[]
+
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+model ProjectTrack {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  trackId   String   @map("track_id")
+  position  Int
+  addedAt   DateTime @default(now()) @map("added_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, trackId])
+  @@map("project_tracks")
+}
+
+model Workspace {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  description     String?
+  imageUrl        String?   @map("image_url")
+  ownerId         String    @map("owner_id")
+  personalUserId  String?   @unique @map("personal_user_id") // For personal workspaces
+  isPersonal      Boolean   @default(false) @map("is_personal")
+  
+  // Billing
+  billingTier     String    @default("free") @map("billing_tier") // free, pro, enterprise
+  billingCycle    String?   @map("billing_cycle") // monthly, yearly
+  stripeCustomerId String?  @map("stripe_customer_id")
+  stripeSubscriptionId String? @map("stripe_subscription_id")
+  subscriptionStatus String? @map("subscription_status")
+  subscriptionEndDate DateTime? @map("subscription_end_date")
+  
+  // Settings
+  settings        Json?     // Custom workspace settings
+  features        Json?     // Feature flags
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  personalUser    User?             @relation("PersonalWorkspace", fields: [personalUserId], references: [id], onDelete: Cascade)
+  members         WorkspaceMember[]
+  tracks          Track[]
+  projects        Project[]
+  playlists       Playlist[]
+  invitations     WorkspaceInvitation[]
+  usage           WorkspaceUsage?
+  activityLogs    WorkspaceActivity[]
+
+  @@index([slug])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  role        WorkspaceRole @default(MEMBER)
+  permissions Json?    // Custom permissions override
+  invitedBy   String?  @map("invited_by")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+  lastActive  DateTime @default(now()) @map("last_active")
+
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model WorkspaceInvitation {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  email       String
+  userId      String?  @map("user_id") // If user exists
+  role        WorkspaceRole @default(MEMBER)
+  token       String   @unique
+  invitedBy   String   @map("invited_by")
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  acceptedAt  DateTime? @map("accepted_at")
+
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([token])
+  @@map("workspace_invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+model WorkspaceUsage {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique @map("workspace_id")
+  
+  // Current period usage
+  currentTracks     Int      @default(0) @map("current_tracks")
+  currentProjects   Int      @default(0) @map("current_projects")
+  currentMembers    Int      @default(0) @map("current_members")
+  currentStorage    BigInt   @default(0) @map("current_storage") // in bytes
+  currentBandwidth  BigInt   @default(0) @map("current_bandwidth") // in bytes
+  
+  // Total usage
+  totalTracks       Int      @default(0) @map("total_tracks")
+  totalProjects     Int      @default(0) @map("total_projects")
+  totalStorage      BigInt   @default(0) @map("total_storage")
+  totalBandwidth    BigInt   @default(0) @map("total_bandwidth")
+  
+  // Period tracking
+  periodStart       DateTime @default(now()) @map("period_start")
+  periodEnd         DateTime @map("period_end")
+  
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@map("workspace_usage")
+}
+
+model WorkspaceActivity {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  userId      String   @map("user_id")
+  action      String   // created, updated, deleted, invited, removed, etc.
+  entityType  String   @map("entity_type") // track, project, member, etc.
+  entityId    String?  @map("entity_id")
+  metadata    Json?    // Additional context
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  // Relations
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@index([workspaceId, createdAt])
+  @@map("workspace_activity")
+}
+
+model WorkspaceBillingLimit {
+  id               String  @id @default(cuid())
+  tier             String  @unique // free, pro, enterprise
+  maxMembers       Int     @map("max_members")
+  maxTracks        Int     @map("max_tracks")
+  maxProjects      Int     @map("max_projects")
+  maxStorageGB     Int     @map("max_storage_gb")
+  maxBandwidthGB   Int     @map("max_bandwidth_gb")
+  priceMonthly     Float   @map("price_monthly")
+  priceYearly      Float   @map("price_yearly")
+  features         Json?   // Feature flags and limits
+  
+  @@map("workspace_billing_limits")
+}
+
+// Project member roles
+enum ProjectRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String      @map("project_id")
+  userId    String      @map("user_id")
+  role      ProjectRole @default(VIEWER)
+  joinedAt  DateTime    @default(now()) @map("joined_at")
+  
+  // Relations
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectInvitation {
+  id          String      @id @default(cuid())
+  projectId   String      @map("project_id")
+  inviterId   String      @map("inviter_id")
+  email       String
+  role        ProjectRole @default(VIEWER)
+  token       String      @unique @default(uuid())
+  expiresAt   DateTime    @map("expires_at")
+  acceptedAt  DateTime?   @map("accepted_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  
+  // Relations
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  inviter     User        @relation("ProjectInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, email])
+  @@index([email])
+  @@index([token])
+  @@map("project_invitations")
+}
