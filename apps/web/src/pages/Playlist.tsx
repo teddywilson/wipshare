@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '../lib/api-client'
 import { usePlayer } from '../contexts/PlayerContext'
-import { auth } from '../lib/firebase'
+import { useAuth } from '../lib/auth-context'
 import toast from 'react-hot-toast'
 import TrackList from '../components/TrackList'
 import AddTracksModal from '../components/AddTracksModal'
@@ -78,6 +78,7 @@ export default function Playlist() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   
+  const { getToken, user } = useAuth()
   const { playTrack, currentTrack, isPlaying } = usePlayer()
   
   const [playlist, setPlaylist] = useState<PlaylistData | null>(() => {
@@ -261,22 +262,21 @@ export default function Playlist() {
       const formData = new FormData()
       formData.append('image', file)
       
-      // Get fresh token from Firebase auth
-      const user = auth.currentUser
-      if (!user) {
+      // Get fresh token from Clerk auth
+      const authToken = await getToken()
+      if (!authToken) {
         console.error('No authenticated user found')
         throw new Error('User not authenticated')
       }
-      const token = await user.getIdToken()
-      console.log('Got auth token for user:', user.email)
+      console.log('Got auth token for user:', user?.email)
       
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/playlists/${playlist.id}/image`
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/playlists/${playlist.id}/image`
       console.log('Uploading image to:', apiUrl)
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${authToken}`
         },
         body: formData
       })

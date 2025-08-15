@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { X, Lock, Users, Upload, Image } from 'lucide-react'
 import { apiClient } from '../lib/api-client'
-import { auth } from '../lib/firebase'
+import { useAuth } from '../lib/auth-context'
 import toast from 'react-hot-toast'
 
 interface EditPlaylistModalProps {
@@ -11,6 +11,7 @@ interface EditPlaylistModalProps {
 }
 
 export default function EditPlaylistModal({ playlist, onClose, onSuccess }: EditPlaylistModalProps) {
+  const { getToken } = useAuth()
   const [title, setTitle] = useState(playlist.title)
   const [description, setDescription] = useState(playlist.description || '')
   const [visibility, setVisibility] = useState(playlist.visibility === 'SECRET_LINK' ? 'PRIVATE' : playlist.visibility)
@@ -57,11 +58,10 @@ export default function EditPlaylistModal({ playlist, onClose, onSuccess }: Edit
         const formData = new FormData()
         formData.append('image', imageFile)
         
-        // Get fresh token from Firebase auth
-        const user = auth.currentUser
-        if (user) {
-          const token = await user.getIdToken()
-          await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/playlists/${playlist.id}/image`, {
+        // Get fresh token from Clerk auth
+        const token = await getToken()
+        if (token) {
+          await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/playlists/${playlist.id}/image`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`

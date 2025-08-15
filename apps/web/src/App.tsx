@@ -31,7 +31,6 @@ import Playlist from './pages/Playlist'
 import UserProfile from './pages/UserProfile'
 import FollowRequests from './pages/FollowRequests'
 import AcceptProjectInvite from './pages/AcceptProjectInvite'
-import OAuthDebug from './pages/OAuthDebug'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,7 +70,6 @@ function AppRoutes() {
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/invite/project/:token" element={<AcceptProjectInvite />} />
-          <Route path="/oauth-debug" element={<OAuthDebug />} />
         </Route>
         
         {/* Authenticated routes with header */}
