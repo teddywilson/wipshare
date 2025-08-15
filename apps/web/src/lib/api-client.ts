@@ -96,6 +96,44 @@ export class ApiClient {
     return response.data;
   }
 
+  async sendFollowRequest(userId: string) {
+    const response = await this.client.post(`/users/${userId}/follow`);
+    return response.data;
+  }
+
+  async unfollowUser(userId: string) {
+    const response = await this.client.delete(`/users/${userId}/follow`);
+    return response.data;
+  }
+
+  async getPendingFollowRequests(page = 1, limit = 20) {
+    const response = await this.client.get('/users/me/follow-requests', {
+      params: { page, limit }
+    });
+    return response.data;
+  }
+
+  async respondToFollowRequest(requestId: string, action: 'approve' | 'reject') {
+    const response = await this.client.post(`/users/me/follow-requests/${requestId}/respond`, {
+      action
+    });
+    return response.data;
+  }
+
+  async getUserFollowers(userId: string, page = 1, limit = 20) {
+    const response = await this.client.get(`/users/${userId}/followers`, {
+      params: { page, limit }
+    });
+    return response.data;
+  }
+
+  async getUserFollowing(userId: string, page = 1, limit = 20) {
+    const response = await this.client.get(`/users/${userId}/following`, {
+      params: { page, limit }
+    });
+    return response.data;
+  }
+
   // Tracks endpoints
   async getTracks() {
     const response = await this.client.get('/tracks/my');
@@ -185,6 +223,22 @@ export class ApiClient {
 
   async pinTrackVersion(trackId: string, versionId: string) {
     const response = await this.client.post(`/tracks/${trackId}/versions/${versionId}/pin`);
+    return response.data;
+  }
+
+  // Comments endpoints
+  async getTrackComments(trackId: string) {
+    const response = await this.client.get(`/tracks/${trackId}/comments`);
+    return response.data;
+  }
+
+  async addTrackComment(trackId: string, data: { content: string; timestamp?: number; version?: string }) {
+    const response = await this.client.post(`/tracks/${trackId}/comments`, data);
+    return response.data;
+  }
+
+  async deleteTrackComment(trackId: string, commentId: string) {
+    const response = await this.client.delete(`/tracks/${trackId}/comments/${commentId}`);
     return response.data;
   }
 
@@ -290,6 +344,21 @@ export class ApiClient {
     return response.data;
   }
 
+  async getProjectInvitations(projectId: string) {
+    const response = await this.client.get(`/projects/${projectId}/invitations`);
+    return response.data;
+  }
+
+  async cancelProjectInvitation(projectId: string, invitationId: string) {
+    const response = await this.client.delete(`/projects/${projectId}/invitations/${invitationId}`);
+    return response.data;
+  }
+
+  async resendProjectInvitation(projectId: string, invitationId: string) {
+    const response = await this.client.post(`/projects/${projectId}/invitations/${invitationId}/resend`);
+    return response.data;
+  }
+
   // Workspace endpoints
   async getWorkspaces() {
     const response = await this.client.get('/workspaces');
@@ -323,6 +392,16 @@ export class ApiClient {
 
   async acceptWorkspaceInvitation(token: string) {
     const response = await this.client.post(`/invitations/${token}/accept`);
+    return response.data;
+  }
+
+  async removeWorkspaceMember(workspaceId: string, memberId: string) {
+    const response = await this.client.delete(`/workspaces/${workspaceId}/members/${memberId}`);
+    return response.data;
+  }
+
+  async updateWorkspaceMemberRole(workspaceId: string, memberId: string, role: string) {
+    const response = await this.client.put(`/workspaces/${workspaceId}/members/${memberId}/role`, { role });
     return response.data;
   }
 

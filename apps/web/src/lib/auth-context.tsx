@@ -9,10 +9,18 @@ if (!CLERK_PUBLISHABLE_KEY) {
 
 interface AuthContextType {
   user: any;
+  userProfile?: any;
   isLoading: boolean;
+  loading?: boolean;
   isAuthenticated: boolean;
+  needsUsernameSetup?: boolean;
   signOut: () => Promise<void>;
+  logout?: () => Promise<void>;
   getToken: () => Promise<string | null>;
+  refreshProfile?: () => Promise<void>;
+  login?: (email: string, password: string) => Promise<void>;
+  register?: (email: string, password: string) => Promise<void>;
+  loginWithGoogle?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,12 +65,41 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     user,
+    userProfile: user, // For backwards compatibility
     isLoading: !isLoaded,
+    loading: !isLoaded, // For backwards compatibility
     isAuthenticated: isSignedIn || false,
+    needsUsernameSetup: false, // Clerk handles this
     signOut: async () => {
       await signOut();
     },
+    logout: async () => {
+      await signOut();
+    },
     getToken: getAuthToken,
+    refreshProfile: async () => {
+      // Refresh user data if needed
+      if (clerkUser) {
+        setUser({
+          id: userId,
+          email: clerkUser.primaryEmailAddress?.emailAddress,
+          name: clerkUser.fullName || clerkUser.firstName || 'User',
+          imageUrl: clerkUser.imageUrl,
+        });
+      }
+    },
+    login: async () => {
+      // Clerk handles login via their UI components
+      console.log('Use Clerk SignIn component');
+    },
+    register: async () => {
+      // Clerk handles registration via their UI components
+      console.log('Use Clerk SignUp component');
+    },
+    loginWithGoogle: async () => {
+      // Clerk handles OAuth via their UI components
+      console.log('Use Clerk SignIn component with Google');
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
