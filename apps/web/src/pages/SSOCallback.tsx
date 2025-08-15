@@ -10,7 +10,7 @@ export default function SSOCallback() {
     const handleCallback = async () => {
       try {
         // Handle the OAuth callback using Clerk's built-in method
-        await handleRedirectCallback();
+        await handleRedirectCallback({});
         
         // Check for invitation redirect
         const invitationRedirect = sessionStorage.getItem('invitationRedirect');
