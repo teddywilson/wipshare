@@ -511,7 +511,7 @@ export default function Track() {
     )
   }
 
-  const isOwner = user?.uid === track.user?.firebaseUid
+  const isOwner = user?.uid === track.user?.clerkUserId
 
   // Filter comments for current version
   const filteredComments = comments.filter((comment: any) => {

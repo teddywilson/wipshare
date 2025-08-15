@@ -5,36 +5,32 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Prevent overlapping staging deploys
 concurrency:
   group: staging-deploy
   cancel-in-progress: true
 
 jobs:
   migrate-db:
-    name: Run Prisma migrations (staging)
+    name: Prisma migrate (staging)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Install only in the API workspace to avoid Husky/monorepo noise
-      - name: Install (api)
+      - name: Install (api only)
         working-directory: ./apps/api
         env:
-          HUSKY: "0" # skip git hooks during CI installs
+          HUSKY: "0"
         run: npm ci
 
-      - name: Prisma generate (api)
+      - name: Generate Prisma client
         working-directory: ./apps/api
         run: npx prisma generate
 
-      - name: Prisma migrate deploy (staging DB)
+      - name: Apply migrations to staging
         working-directory: ./apps/api
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STG }}
@@ -46,25 +42,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Render deploy
-        uses: render-examples/deploy-render@v1
-        with:
-          apiKey:   ${{ secrets.RENDER_API_KEY }}
-          serviceId: ${{ secrets.RENDER_API_STG_SERVICE_ID }}
+        id: trigger
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_API_STG_SERVICE_ID }}
+        run: |
+          set -euo pipefail
+          RESP=$(curl -fsS -X POST \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys \
+            -d '{}')
+          echo "$RESP"
+          DEPLOY_ID=$(echo "$RESP" | jq -r '.id')
+          if [ -z "$DEPLOY_ID" ] || [ "$DEPLOY_ID" = "null" ]; then
+            echo "Failed to trigger deploy"; exit 1
+          fi
+          echo "deploy_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Render deploy to complete
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          DEPLOY_ID: ${{ steps.trigger.outputs.deploy_id }}
+        run: |
+          set -euo pipefail
+          TIMEOUT=$(( 15 * 60 ))  # 15 minutes
+          INTERVAL=10
+          ELAPSED=0
+          while true; do
+            RESP=$(curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              https://api.render.com/v1/deploys/${DEPLOY_ID})
+            STATUS=$(echo "$RESP" | jq -r '.status')
+            echo "Render status: $STATUS"
+            case "$STATUS" in
+              live|succeeded) exit 0 ;;
+              failed|canceled|deactivated) echo "$RESP"; exit 1 ;;
+            esac
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+              echo "Timed out waiting for Render deploy"; exit 1
+            fi
+          done
 
   deploy-web:
-    name: Deploy Frontend to Vercel (staging project)
+    name: Deploy frontend to Vercel (staging)
     needs: deploy-api
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (for commit SHA env only)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Vercel deploy
+      - name: Vercel deploy (staging project)
         uses: amondnet/vercel-action@v25
         with:
-          vercel-token:   ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id:  ${{ secrets.VERCEL_ORG_ID }}
+          vercel-token:      ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STG }}
-          # This publishes to the staging project's Production env
           vercel-args: '--prod'
           working-directory: ./apps/frontend
