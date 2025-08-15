@@ -102,22 +102,22 @@ jobs:
         run: npm i -g vercel@25
 
       - name: Write Vercel project config
-        working-directory: ./apps/frontend
+        working-directory: ./apps/web
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STG }}
+          VERCEL_PROJECT_ID_STG: ${{ secrets.VERCEL_PROJECT_ID_STG }}
         run: |
           mkdir -p .vercel
           cat > .vercel/project.json <<EOF
           {
             "orgId": "${VERCEL_ORG_ID}",
-            "projectId": "${VERCEL_PROJECT_ID}"
+            "projectId": "${VERCEL_PROJECT_ID_STG}"
           }
           EOF
           cat .vercel/project.json
 
-      - name: Deploy to Vercel (production env of staging project)
-        working-directory: ./apps/frontend
+      - name: Deploy to Vercel (staging project prod env)
+        working-directory: ./apps/web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
