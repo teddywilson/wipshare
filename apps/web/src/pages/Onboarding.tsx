@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import UsernameSetup from '../components/UsernameSetup'
 import { apiClient } from '../lib/api-client'
+import { useAuth } from '../lib/auth-context'
 
 export default function Onboarding() {
   const navigate = useNavigate()
   const [checking, setChecking] = useState(true)
+  const { isAuthenticated, needsUsernameSetup } = useAuth()
 
   useEffect(() => {
     const check = async () => {
@@ -23,6 +25,11 @@ export default function Onboarding() {
     }
     void check()
   }, [navigate])
+
+  // Perform redirects only after hooks are declared to avoid hook order mismatches
+  if (isAuthenticated && !needsUsernameSetup) {
+    return <Navigate to="/dashboard" />
+  }
 
   if (checking) {
     return (

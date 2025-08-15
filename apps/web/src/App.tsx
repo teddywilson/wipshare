@@ -76,8 +76,8 @@ function AppRoutes() {
           <Route path="/invite/project/:token" element={<AcceptProjectInvite />} />
         </Route>
         
-        {/* Authenticated routes with header */}
-        <Route element={user ? <AuthenticatedLayout /> : <Navigate to="/login" />}>
+        {/* Authenticated routes with header. If onboarding needed, redirect to onboarding screen. */}
+        <Route element={user ? (needsUsernameSetup ? <Navigate to="/onboarding" /> : <AuthenticatedLayout />) : <Navigate to="/login" />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/library" element={<Library />} />
           <Route path="/projects" element={<Projects />} />

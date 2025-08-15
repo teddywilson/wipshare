@@ -89,6 +89,11 @@ export class ApiClient {
     return response.data;
   }
 
+  async completeOnboarding(data: { username: string; displayName?: string; email?: string }) {
+    const response = await this.client.post('/auth/onboard', data);
+    return response.data;
+  }
+
   async createUserProfile(data: { username: string; displayName?: string }) {
     const response = await this.client.post('/auth/profile', data);
     return response.data;

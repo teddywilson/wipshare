@@ -17,7 +17,11 @@ export default function UsernameSetup({ onComplete, initialUsername }: UsernameS
 
     setLoading(true)
     try {
-      await apiClient.createUserProfile({ username })
+      const result = await apiClient.completeOnboarding({ username })
+      // Optionally set workspace header immediately if provided
+      if (result?.defaultWorkspaceId) {
+        apiClient.setCurrentWorkspace(result.defaultWorkspaceId)
+      }
       toast.success('Username set successfully!')
       onComplete(username)
     } catch (error: any) {

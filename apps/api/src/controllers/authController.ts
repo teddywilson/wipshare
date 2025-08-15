@@ -22,6 +22,140 @@ export class AuthController {
       throw error;
     }
   }
+
+  // Complete onboarding: create or finalize user and ensure a personal workspace exists
+  static async onboard(req: AuthRequest, res: Response): Promise<Response | void> {
+    try {
+      const clerkUserId = req.auth!.userId;
+      const { username, displayName, email } = req.body || {};
+
+      if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
+        return res.status(400).json({
+          error: 'Invalid username',
+          message: 'Username must be 3-20 characters, lowercase letters, numbers, and underscores only'
+        });
+      }
+
+      // If user already exists with a completed profile, short-circuit
+      const existingByClerk = await prisma.user.findUnique({
+        where: { clerkUserId },
+        select: { id: true, username: true, defaultWorkspaceId: true }
+      });
+
+      // Username collision check (if changing or creating)
+      const existingByUsername = await prisma.user.findUnique({
+        where: { username },
+        select: { id: true }
+      });
+
+      if (existingByUsername && existingByClerk && existingByUsername.id !== existingByClerk.id) {
+        return res.status(400).json({ error: 'Username already taken', message: 'Please choose a different username' });
+      }
+
+      // Create or update the user record
+      const user = existingByClerk
+        ? await prisma.user.update({
+            where: { clerkUserId },
+            data: {
+              username,
+              displayName: displayName || (email ? String(email).split('@')[0] : username),
+              email: email || `${clerkUserId}@clerk.user`,
+            },
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              displayName: true,
+              defaultWorkspaceId: true,
+            }
+          })
+        : await prisma.user.create({
+            data: {
+              clerkUserId,
+              username,
+              displayName: displayName || (email ? String(email).split('@')[0] : username),
+              email: email || `${clerkUserId}@clerk.user`,
+            },
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              displayName: true,
+              defaultWorkspaceId: true,
+            }
+          });
+
+      // Ensure a personal workspace exists and membership is created
+      let defaultWorkspaceId = user.defaultWorkspaceId || null;
+      if (!defaultWorkspaceId) {
+        // Try to find existing personal workspace for this user
+        const existingPersonal = await prisma.workspace.findFirst({
+          where: { isPersonal: true, personalUserId: user.id },
+          select: { id: true }
+        });
+
+        if (existingPersonal) {
+          defaultWorkspaceId = existingPersonal.id;
+        } else {
+          const personalSlugBase = username;
+          let slug = personalSlugBase;
+          let attempt = 0;
+          while (true) {
+            try {
+              const created = await prisma.workspace.create({
+                data: {
+                  name: `${username}`,
+                  slug,
+                  ownerId: user.id,
+                  isPersonal: true,
+                  personalUserId: user.id,
+                  members: {
+                    create: { userId: user.id, role: 'OWNER' }
+                  },
+                  usage: {
+                    create: { periodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }
+                  }
+                },
+                select: { id: true }
+              });
+              defaultWorkspaceId = created.id;
+              break;
+            } catch (e: any) {
+              if (e.code === 'P2002' && e.meta?.target?.includes('slug')) {
+                attempt += 1;
+                slug = `${personalSlugBase}-${attempt}`;
+                continue;
+              }
+              throw e;
+            }
+          }
+
+          // Set as user's default workspace
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { defaultWorkspaceId }
+          });
+        }
+      }
+
+      return res.json({
+        message: 'Onboarding completed',
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName,
+        },
+        defaultWorkspaceId,
+        needsOnboarding: false
+      });
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        return res.status(400).json({ error: 'Unique constraint failed', message: 'Value already taken' });
+      }
+      throw error;
+    }
+  }
   // Search users by username or display name
   static async searchUsers(req: AuthRequest, res: Response): Promise<Response | void> {
     try {

@@ -16,3 +16,6 @@ authRouter.get('/me', requireAuth, AuthController.me);
 
 // Auth status for onboarding (requires Clerk session only)
 authRouter.get('/status', requireClerkAuth, AuthController.status);
+
+// Complete onboarding (requires Clerk session)
+authRouter.post('/onboard', requireClerkAuth, AuthController.onboard);

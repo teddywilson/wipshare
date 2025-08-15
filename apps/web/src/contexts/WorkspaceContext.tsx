@@ -60,26 +60,31 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined)
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, needsUsernameSetup } = useAuth()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null)
   const [loading, setLoading] = useState(true)
   const [switching, setSwitching] = useState(false)
 
-  // Load workspaces on mount and when auth changes
+  // Load workspaces when authenticated and profile complete
   useEffect(() => {
-    if (user) {
+    if (user && !needsUsernameSetup) {
       loadWorkspaces()
     } else {
       setWorkspaces([])
       setCurrentWorkspace(null)
+      apiClient.setCurrentWorkspace(null)
       setLoading(false)
     }
-  }, [user])
+  }, [user, needsUsernameSetup])
 
   const loadWorkspaces = async () => {
     try {
       setLoading(true)
+      if (!user || needsUsernameSetup) {
+        // Skip fetching until onboarding complete
+        return
+      }
       const response = await apiClient.getWorkspaces()
       const { workspaces: fetchedWorkspaces, defaultWorkspaceId } = response
       

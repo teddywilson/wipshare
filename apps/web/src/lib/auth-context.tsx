@@ -40,6 +40,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, userId, getToken, signOut } = useClerkAuth();
   const { user: clerkUser } = useUser();
   const [user, setUser] = useState<any>(null);
+  const [dbUser, setDbUser] = useState<any>(null);
   const [needsUsernameSetup, setNeedsUsernameSetup] = useState<boolean>(false);
 
   // Initialize API client with Clerk token getter
@@ -61,6 +62,8 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sync = async () => {
       if (isLoaded && isSignedIn && clerkUser) {
+        // Assume onboarding is needed until proven otherwise to avoid early data fetching
+        setNeedsUsernameSetup(true);
         setUser({
           id: userId,
           email: clerkUser.primaryEmailAddress?.emailAddress,
@@ -70,13 +73,25 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         try {
           const status = await apiClient.getAuthStatus();
           setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
+          if (!Boolean(status?.needsOnboarding)) {
+            try {
+              const me = await apiClient.getCurrentUser();
+              setDbUser(me?.user || null);
+            } catch (e) {
+              setDbUser(null);
+            }
+          } else {
+            setDbUser(null);
+          }
         } catch (e) {
-          // If status endpoint fails with 428/401, assume onboarding needed when signed in
+          // If status endpoint fails with 428/401, keep onboarding required
           setNeedsUsernameSetup(true);
+          setDbUser(null);
         }
       } else {
         setUser(null);
         setNeedsUsernameSetup(false);
+        setDbUser(null);
       }
     };
     void sync();
@@ -84,7 +99,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextType = {
     user,
-    userProfile: user, // For backwards compatibility
+    userProfile: dbUser || undefined,
     isLoading: !isLoaded,
     loading: !isLoaded, // For backwards compatibility
     isAuthenticated: isSignedIn || false,
@@ -105,19 +120,15 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
       }
     },
     refreshProfile: async () => {
-      // Refresh user data if needed
-      if (clerkUser) {
-        setUser({
-          id: userId,
-          email: clerkUser.primaryEmailAddress?.emailAddress,
-          name: clerkUser.fullName || clerkUser.firstName || 'User',
-          imageUrl: clerkUser.imageUrl,
-        });
-        try {
-          const status = await apiClient.getAuthStatus();
-          setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
-        } catch {}
-      }
+      if (!clerkUser) return;
+      try {
+        const status = await apiClient.getAuthStatus();
+        setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
+        if (!Boolean(status?.needsOnboarding)) {
+          const me = await apiClient.getCurrentUser();
+          setDbUser(me?.user || null);
+        }
+      } catch {}
     },
     login: async () => {
       // Clerk handles login via their UI components
