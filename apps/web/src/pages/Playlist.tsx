@@ -270,7 +270,8 @@ export default function Playlist() {
       }
       console.log('Got auth token for user:', user?.email)
       
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/playlists/${playlist.id}/image`
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//localhost:8080`
+      const apiUrl = `${apiBaseUrl}/api/playlists/${playlist.id}/image`
       console.log('Uploading image to:', apiUrl)
       
       const response = await fetch(apiUrl, {

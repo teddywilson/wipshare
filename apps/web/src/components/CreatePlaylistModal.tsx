@@ -60,7 +60,8 @@ export default function CreatePlaylistModal({ onClose, onSuccess }: CreatePlayli
         // Get fresh token from Clerk auth
         const token = await getToken()
         if (token) {
-          await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/playlists/${response.playlist.id}/image`, {
+          const apiUrl = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//localhost:8080`
+          await fetch(`${apiUrl}/api/playlists/${response.playlist.id}/image`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`

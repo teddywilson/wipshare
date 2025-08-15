@@ -1,6 +1,16 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Use window.location.protocol for dynamic protocol when no env var is set
+const getDefaultApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    // In production, use the same protocol as the current page
+    const protocol = window.location.protocol;
+    return `${protocol}//localhost:8081`;
+  }
+  return 'https://localhost:8081'; // Default to HTTPS
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiUrl();
 
 export class ApiClient {
   private client: AxiosInstance;
