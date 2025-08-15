@@ -47,17 +47,7 @@ console.log('Environment check:', {
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS
 });
 
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: process.env.NODE_ENV === 'production'
-}));
-app.use(compression());
-
-// Clerk auth context (must come before routes using auth)
-app.use(attachClerk);
-
-// CORS configuration
+// CORS configuration - MUST come first for preflight handling
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : ['http://localhost:5173'];
@@ -74,8 +64,22 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  maxAge: 86400, // Cache preflight for 24 hours
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-workspace-id'],
+  exposedHeaders: ['x-total-count', 'x-page', 'x-limit']
 }));
+
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: process.env.NODE_ENV === 'production'
+}));
+app.use(compression());
+
+// Clerk auth context (must come before routes using auth)
+app.use(attachClerk);
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {
@@ -85,6 +89,11 @@ if (process.env.NODE_ENV !== 'test') {
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Handle preflight requests quickly
+app.options('*', (req, res) => {
+  res.sendStatus(204);
+});
 
 // Health check endpoint (no auth required)
 app.get('/healthz', (req, res) => {
