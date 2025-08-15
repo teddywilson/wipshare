@@ -67,7 +67,7 @@ jobs:
           DEPLOY_ID: ${{ steps.trigger.outputs.deploy_id }}
         run: |
           set -euo pipefail
-          TIMEOUT=$(( 15 * 60 ))  # 15 minutes
+          TIMEOUT=$(( 15 * 60 ))
           INTERVAL=10
           ELAPSED=0
           while true; do
@@ -98,11 +98,27 @@ jobs:
         with:
           node-version: 20
 
-      - name: Vercel deploy (staging project)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token:      ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STG }}
-          vercel-args: '--prod'
-          working-directory: ./apps/frontend
+      - name: Install Vercel CLI
+        run: npm i -g vercel@25
+
+      - name: Write Vercel project config
+        working-directory: ./apps/frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STG }}
+        run: |
+          mkdir -p .vercel
+          cat > .vercel/project.json <<EOF
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          EOF
+          cat .vercel/project.json
+
+      - name: Deploy to Vercel (production env of staging project)
+        working-directory: ./apps/frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel deploy --prod --yes --token "$VERCEL_TOKEN"
