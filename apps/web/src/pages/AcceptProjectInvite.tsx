@@ -81,7 +81,8 @@ export default function AcceptProjectInvite() {
 
     try {
       if (isSignUp) {
-        await register(email, password, username, displayName || email.split('@')[0])
+        await register(email, password)
+        // TODO: Set username and display name after registration via profile API
       } else {
         await login(email, password)
       }
