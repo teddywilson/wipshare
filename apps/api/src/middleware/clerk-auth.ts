@@ -11,7 +11,9 @@ export interface AuthRequest extends Request {
 }
 
 // Attach Clerk auth context globally in index.ts via this export
-export const attachClerk = clerkMiddleware();
+export const attachClerk = clerkMiddleware({
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_bWF0dXJlLXBvbGxpd29nLTMwLmNsZXJrLmFjY291bnRzLmRldiQ'
+});
 
 // Require authentication and populate req.user from DB
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
