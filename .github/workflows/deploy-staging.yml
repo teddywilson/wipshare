@@ -94,11 +94,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy with Vercel official action
-        uses: vercel/actions/deploy@v1
+      - uses: actions/setup-node@v4
         with:
-          token:        ${{ secrets.VERCEL_TOKEN }}
-          org-id:       ${{ secrets.VERCEL_ORG_ID }}
-          project-id:   ${{ secrets.VERCEL_PROJECT_ID_STG }}
+          node-version: 20
+
+      - name: Vercel deploy (staging project)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token:      ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id:     ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STG }}
+          vercel-args: '--prod'
           working-directory: ./apps/frontend
-          prod: true
