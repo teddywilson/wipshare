@@ -54,7 +54,17 @@ jobs:
             "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
             -d '{}')
           echo "$resp"
-          echo "deploy_id=$(echo "$resp" | jq -r '.id')" >> "$GITHUB_OUTPUT"
+          DEPLOY_ID=$(echo "$resp" | jq -r '.id // empty')
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "No deploy id returned from Render trigger; attempting to fetch latest deploy id..."
+            DEPLOY_ID=$(curl -fsS -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=1" | jq -r '.[0].id // empty')
+          fi
+          if [ -z "${DEPLOY_ID}" ] || [ "${DEPLOY_ID}" = "null" ]; then
+            echo "Failed to determine Render deploy id" >&2
+            exit 1
+          fi
+          echo "deploy_id=${DEPLOY_ID}" >> "$GITHUB_OUTPUT"
 
       - name: Wait for Render deploy to complete
         env:
@@ -63,6 +73,10 @@ jobs:
           DEPLOY_ID: ${{ steps.trigger.outputs.deploy_id }}
         run: |
           set -euo pipefail
+          if [ -z "${DEPLOY_ID:-}" ]; then
+            echo "DEPLOY_ID not set; cannot poll Render deploy" >&2
+            exit 1
+          fi
           TIMEOUT=$((15*60))  # 15m
           INTERVAL=10
           ELAPSED=0
@@ -70,11 +84,16 @@ jobs:
             resp=$(curl -fsS \
               -H "Authorization: Bearer ${RENDER_API_KEY}" \
               "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${DEPLOY_ID}")
-            status=$(echo "$resp" | jq -r '.status')
+            status=$(echo "$resp" | jq -r '.status // empty')
             echo "Render status: $status"
+            if [ -z "$status" ]; then
+              echo "Unexpected response while polling deploy: $resp" >&2
+              exit 1
+            fi
             case "$status" in
               live|succeeded) exit 0 ;;
-              failed|canceled|deactivated) echo "$resp"; exit 1 ;;
+              build_failed|update_failed|failed|canceled|deactivated) echo "$resp"; exit 1 ;;
+              *) ;;
             esac
             sleep $INTERVAL
             ELAPSED=$((ELAPSED+INTERVAL))
