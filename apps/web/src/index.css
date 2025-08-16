@@ -9,6 +9,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  #root.opacity-0 {
+    transition: opacity 180ms ease;
+    opacity: 0;
+  }
   
   .font-mono {
     font-family: 'SF Mono', Monaco, 'Cascadia Mono', 'Roboto Mono', Consolas, 'Courier New', monospace;

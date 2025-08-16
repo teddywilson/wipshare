@@ -42,6 +42,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [dbUser, setDbUser] = useState<any>(null);
   const [needsUsernameSetup, setNeedsUsernameSetup] = useState<boolean>(false);
+  const [initializing, setInitializing] = useState<boolean>(true);
 
   // Initialize API client with Clerk token getter
   useEffect(() => {
@@ -60,10 +61,10 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
   }, [getToken]);
 
   useEffect(() => {
+    let cancelled = false;
     const sync = async () => {
+      setInitializing(true);
       if (isLoaded && isSignedIn && clerkUser) {
-        // Assume onboarding is needed until proven otherwise to avoid early data fetching
-        setNeedsUsernameSetup(true);
         setUser({
           id: userId,
           email: clerkUser.primaryEmailAddress?.emailAddress,
@@ -72,36 +73,41 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
         });
         try {
           const status = await apiClient.getAuthStatus();
-          setNeedsUsernameSetup(Boolean(status?.needsOnboarding));
-          if (!Boolean(status?.needsOnboarding)) {
+          if (cancelled) return;
+          const needs = Boolean(status?.needsOnboarding);
+          setNeedsUsernameSetup(needs);
+          if (!needs) {
             try {
               const me = await apiClient.getCurrentUser();
-              setDbUser(me?.user || null);
-            } catch (e) {
-              setDbUser(null);
+              if (!cancelled) setDbUser(me?.user || null);
+            } catch {
+              if (!cancelled) setDbUser(null);
             }
           } else {
             setDbUser(null);
           }
-        } catch (e) {
-          // If status endpoint fails with 428/401, keep onboarding required
-          setNeedsUsernameSetup(true);
-          setDbUser(null);
+        } catch {
+          if (!cancelled) {
+            setNeedsUsernameSetup(true);
+            setDbUser(null);
+          }
         }
       } else {
         setUser(null);
         setNeedsUsernameSetup(false);
         setDbUser(null);
       }
+      if (!cancelled) setInitializing(false);
     };
     void sync();
+    return () => { cancelled = true; };
   }, [isLoaded, isSignedIn, userId, clerkUser]);
 
   const value: AuthContextType = {
     user,
     userProfile: dbUser || undefined,
-    isLoading: !isLoaded,
-    loading: !isLoaded, // For backwards compatibility
+    isLoading: !isLoaded || initializing,
+    loading: !isLoaded || initializing, // For backwards compatibility
     isAuthenticated: isSignedIn || false,
     needsUsernameSetup,
     signOut: async () => {

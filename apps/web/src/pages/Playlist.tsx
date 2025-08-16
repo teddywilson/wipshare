@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '../lib/api-client'
 import { usePlayer } from '../contexts/PlayerContext'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import toast from 'react-hot-toast'
 import TrackList from '../components/TrackList'
 import AddTracksModal from '../components/AddTracksModal'

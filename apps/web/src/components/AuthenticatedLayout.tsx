@@ -6,11 +6,13 @@ import Player from './Player'
 import { PlayerProvider } from '../contexts/PlayerContext'
 import { useWorkspace } from '../contexts/WorkspaceContext'
 import { Loader2 } from 'lucide-react'
+import { useAuth } from '../lib/stytch-auth-context'
 
 export default function AuthenticatedLayout() {
   const { switching } = useWorkspace()
+  const { isLoading } = useAuth()
   
-  const showLoadingOverlay = switching
+  const showLoadingOverlay = (switching || isLoading)
   
   return (
     <PlayerProvider>

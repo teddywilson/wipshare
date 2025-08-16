@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import { usePlayer } from '../contexts/PlayerContext'
 import { 
   useTrack, 

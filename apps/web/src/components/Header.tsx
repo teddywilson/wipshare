@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Menu } from 'lucide-react'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import SearchModal from './SearchModal'
 import MobileSidebar from './MobileSidebar'
 

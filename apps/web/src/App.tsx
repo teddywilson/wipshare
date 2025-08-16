@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { AuthProvider, useAuth } from './lib/auth-context'
+import { AuthProvider, useAuth } from './lib/stytch-auth-context'
 import { DataProvider } from './contexts/DataContext'
 import { WorkspaceProvider } from './contexts/WorkspaceContext'
 import { useState } from 'react'
@@ -17,7 +17,7 @@ import UsernameSetup from './components/UsernameSetup'
 
 // Pages
 import Landing from './pages/Landing'
-import Login from './pages/LoginWithClerk'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import Track from './pages/Track'
@@ -49,15 +49,13 @@ const queryClient = new QueryClient({
 })
 
 function AppRoutes() {
-  const { user, userProfile, loading, needsUsernameSetup, refreshProfile } = useAuth()
+  const { user, userProfile, isLoading: loading, needsUsernameSetup, refreshProfile } = useAuth()
   const [showUsernameSetup, setShowUsernameSetup] = useState(false)
 
   // Show username setup modal for users with temporary usernames
   const shouldShowUsernameSetup = user && needsUsernameSetup && !showUsernameSetup
 
-  if (loading) {
-    return <AppLoadingScreen />
-  }
+  // Always render app shell; internal overlays handle loading to avoid double spinners
 
   const handleUsernameSetupComplete = async () => {
     setShowUsernameSetup(false)
@@ -69,15 +67,15 @@ function AppRoutes() {
       <Routes>
         {/* Public routes with search modal */}
         <Route element={<AppLayout />}>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/" element={loading ? <AppLoadingScreen /> : user ? <Navigate to="/dashboard" /> : <Landing />} />
+          <Route path="/login" element={loading ? <AppLoadingScreen /> : user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/sso-callback" element={<SSOCallback />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/invite/project/:token" element={<AcceptProjectInvite />} />
         </Route>
         
-        {/* Authenticated routes with header. If onboarding needed, redirect to onboarding screen. */}
-        <Route element={user ? (needsUsernameSetup ? <Navigate to="/onboarding" /> : <AuthenticatedLayout />) : <Navigate to="/login" />}>
+        {/* Authenticated routes with header. Keep layout even in onboarding (overlays will show) */}
+        <Route element={loading ? <AppLoadingScreen /> : user ? <AuthenticatedLayout /> : <Navigate to="/login" />}> 
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/library" element={<Library />} />
           <Route path="/projects" element={<Projects />} />

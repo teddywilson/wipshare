@@ -4,7 +4,7 @@ import { Settings, Music2, FolderOpen, ListMusic, Home, ChevronRight, ChevronDow
 import UsageDisplay from './UsageDisplay'
 import { useUserTracks } from '../hooks/useTrackQueries'
 import { apiClient } from '../lib/api-client'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import { sidebarEvents, SIDEBAR_EVENTS } from '../lib/events'
 import CreatePlaylistModal from './CreatePlaylistModal'
 import { CacheManager } from '../lib/cache'
@@ -38,12 +38,7 @@ export default function Sidebar() {
     const fromCache = CacheManager.get<any[]>('cachedProjects')
     const fromSession = sessionStorage.getItem('projects_list')
     if (fromSession) {
-      try {
-        const data = JSON.parse(fromSession)
-        return data.projects || fromCache || []
-      } catch (e) {
-        return fromCache || []
-      }
+      return JSON.parse(fromSession)
     }
     return fromCache || []
   })

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import toast from 'react-hot-toast'
 import { User, Camera, Loader2 } from 'lucide-react'
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import { usePlayer } from '../contexts/PlayerContext'
 import { useUserTracks, useDeleteTrack } from '../hooks/useTrackQueries'
 import { 

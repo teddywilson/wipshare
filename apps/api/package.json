@@ -21,7 +21,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",
     "@aws-sdk/s3-request-presigner": "^3.864.0",
-    "@clerk/express": "^1.7.21",
+    "stytch": "^12.31.0",
     "@google-cloud/logging": "^11.2.0",
     "@google-cloud/monitoring": "^4.1.0",
     "@google-cloud/storage": "^7.16.0",

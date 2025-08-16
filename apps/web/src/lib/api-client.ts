@@ -84,8 +84,16 @@ export class ApiClient {
   }
 
   // User endpoints
+  private lastStatusAt: number | null = null;
+  private lastStatusValue: any | null = null;
   async getAuthStatus() {
+    const now = Date.now();
+    if (this.lastStatusAt && now - this.lastStatusAt < 2000 && this.lastStatusValue) {
+      return this.lastStatusValue;
+    }
     const response = await this.client.get('/auth/status');
+    this.lastStatusAt = now;
+    this.lastStatusValue = response.data;
     return response.data;
   }
 

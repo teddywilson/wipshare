@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useProjectInvitationDetails, useAcceptProjectInvitation } from '../hooks/useProjectMemberQueries'
 import { Users, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import toast from 'react-hot-toast'
 
 interface ProjectInvitation {

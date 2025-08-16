@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { User, UserPlus, UserMinus, Music, Users, UserCheck, Plus, MapPin, Check } from 'lucide-react'
 import { apiClient } from '../lib/api-client'
-import { useAuth } from '../lib/auth-context'
+import { useAuth } from '../lib/stytch-auth-context'
 import toast from 'react-hot-toast'
 
 interface UserProfile {
